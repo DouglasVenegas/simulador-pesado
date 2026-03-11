@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab Finder — Inventario de Laboratorio</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --border: #e2e6ea;
+    --accent: #2563eb;
+    --accent2: #16a34a;
+    --text: #111827;
+    --muted: #6b7280;
+    --highlight: #fef08a;
+    --zone-f: #4ade80;
+    --zone-a: #fb923c;
+    --zone-e: #93c5fd;
+    --zone-l: #93c5fd;
+    --zone-k: #93c5fd;
+    --zone-cong: #f9a8d4;
+    --zone-cap: #d8b4fe;
+    --zone-inv: #e5e7eb;
+    --active-glow: rgba(37,99,235,0.25);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--text);
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+
+  header .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.15rem;
+    letter-spacing: -0.5px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  header .logo span { color: #4ade80; }
+
+  .search-wrap {
+    flex: 1;
+    max-width: 480px;
+    margin-left: auto;
+    position: relative;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    padding: 10px 16px 10px 42px;
+    border-radius: 99px;
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: white;
+    font-size: 0.95rem;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: background 0.2s;
+  }
+
+  .search-wrap input::placeholder { color: rgba(255,255,255,0.45); }
+  .search-wrap input:focus { background: rgba(255,255,255,0.2); }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+  }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fafafa;
+  }
+
+  .panel-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .badge {
+    background: var(--accent);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 99px;
+    padding: 2px 10px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* RESULTS LIST */
+  #results-list {
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .result-card {
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .result-card:hover {
+    border-color: var(--accent);
+    background: #eff6ff;
+    transform: translateX(2px);
+  }
+
+  .result-card.active {
+    border-color: var(--accent);
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px var(--active-glow);
+  }
+
+  .zone-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .card-info { min-width: 0; }
+
+  .card-name {
+    font-weight: 600;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+
+  .card-meta {
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .card-qty {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* FILTERS */
+  .filters {
+    padding: 12px 20px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: #fafafa;
+  }
+
+  .filter-btn {
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* LAB MAP */
+  .map-container {
+    padding: 16px;
+    overflow: auto;
+  }
+
+  svg.lab-map {
+    width: 100%;
+    height: auto;
+    min-width: 420px;
+  }
+
+  /* MAP ZONE STYLES */
+  .map-zone {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .map-zone rect, .map-zone polygon {
+    transition: all 0.2s;
+  }
+
+  .map-zone:hover rect,
+  .map-zone:hover polygon {
+    filter: brightness(0.9);
+  }
+
+  .map-zone.highlighted rect,
+  .map-zone.highlighted polygon {
+    stroke: #1d4ed8;
+    stroke-width: 3px;
+    filter: brightness(0.85) drop-shadow(0 0 6px rgba(37,99,235,0.5));
+  }
+
+  /* DETAIL PANEL */
+  #detail-panel {
+    padding: 20px;
+    display: none;
+  }
+
+  #detail-panel.visible { display: block; }
+
+  .detail-location {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: white;
+    border-radius: 10px;
+    padding: 6px 16px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  .detail-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .detail-stat {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .detail-stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .detail-stat-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .zone-legend {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* scrollbar */
+  #results-list::-webkit-scrollbar { width: 6px; }
+  #results-list::-webkit-scrollbar-track { background: transparent; }
+  #results-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+  .highlight-text {
+    background: var(--highlight);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Lab<span>Finder</span></div>
+  <div class="search-wrap">
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5">
+      <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+    </svg>
+    <input type="text" id="search-input" placeholder="Buscar material, cristalería…" autocomplete="off" autofocus>
+  </div>
+</header>
+
+<main>
+
+  <!-- LEFT: Results -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Inventario</span>
+      <span class="badge" id="count-badge">0 items</span>
+    </div>
+    <div class="filters" id="filter-bar">
+      <button class="filter-btn active" data-filter="all">Todos</button>
+    </div>
+    <div id="results-list">
+      <div class="empty-state">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+        </svg>
+        <p>Escribe para buscar en el inventario</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Map + Detail -->
+  <div class="panel" style="display:flex; flex-direction:column;">
+    <div class="panel-header">
+      <span class="panel-title">Mapa del Laboratorio</span>
+      <span style="font-size:0.72rem; color:var(--muted);">Haz clic en una zona</span>
+    </div>
+
+    <!-- Detail card -->
+    <div id="detail-panel">
+      <div class="detail-location" id="detail-location">—</div>
+      <div class="detail-name" id="detail-name">—</div>
+      <div style="font-size:0.82rem; color:var(--muted);" id="detail-type">—</div>
+      <div class="detail-grid">
+        <div class="detail-stat">
+          <div class="detail-stat-label">Cantidad</div>
+          <div class="detail-stat-value" id="detail-qty">—</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-label">Zona</div>
+          <div class="detail-stat-value" id="detail-zone">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-container" style="flex:1;">
+      <!-- LAB MAP SVG -->
+      <svg class="lab-map" viewBox="0 0 760 460" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background -->
+        <rect width="760" height="460" fill="#f8f9fa" rx="8"/>
+
+        <!-- Grid dots -->
+        <defs>
+          <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+            <circle cx="15" cy="15" r="1.2" fill="#dde1e7"/>
+          </pattern>
+        </defs>
+        <rect width="760" height="460" fill="url(#grid)" rx="8"/>
+
+        <!-- ===== ZONE F: Refrigeración top row ===== -->
+        <g class="map-zone" id="zone-F" onclick="filterByZone('F')">
+          <rect x="160" y="12" width="570" height="42" fill="#4ade80" rx="6" opacity="0.85"/>
+          <text x="445" y="37" text-anchor="middle" font-family="Space Mono,monospace" font-size="11" font-weight="700" fill="#14532d">ZONA F — F1 a F18 (Refrigeración / Freezer)</text>
+        </g>
+
+        <!-- Individual F labels -->
+        <g font-family="Space Mono,monospace" font-size="7.5" fill="#14532d" font-weight="700">
+          <text x="178" y="62" text-anchor="middle">F1</text>
+          <text x="210" y="62" text-anchor="middle">F2</text>
+          <text x="241" y="62" text-anchor="middle">F3</text>
+          <text x="272" y="62" text-anchor="middle">F4</text>
+          <text x="313" y="62" text-anchor="middle">F5</text>
+          <text x="344" y="62" text-anchor="middle">F6</text>
+          <text x="375" y="62" text-anchor="middle">F7</text>
+          <text x="406" y="62" text-anchor="middle">F8</text>
+          <text x="447" y="62" text-anchor="middle">F9</text>
+          <text x="485" y="62" text-anchor="middle">F10</text>
+          <text x="520" y="62" text-anchor="middle">F11</text>
+          <text x="551" y="62" text-anchor="middle">F12</text>
+          <text x="590" y="62" text-anchor="middle">F13</text>
+          <text x="621" y="62" text-anchor="middle">F14</text>
+          <text x="652" y="62" text-anchor="middle">F15</text>
+          <text x="683" y="62" text-anchor="middle">F16</text>
+          <text x="718" y="62" text-anchor="middle">F17</text>
+          <text x="743" y="62" text-anchor="middle">F18</text>
+        </g>
+
+        <!-- ===== ZONE AE/AG (left semicircle area) ===== -->
+        <g class="map-zone" id="zone-AE" onclick="filterByZone('A')">
+          <ellipse cx="100" cy="240" rx="90" ry="170" fill="#bfdbfe" opacity="0.6"/>
+          <text x="92" y="235" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="16" font-weight="700" fill="#1e3a5f">AE /</text>
+          <text x="92" y="255" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="16" font-weight="700" fill="#1e3a5f">AG</text>
+        </g>
+
+        <!-- A sub-zones -->
+        <g class="map-zone" id="zone-A1" onclick="filterByZone('A1')">
+          <rect x="20" y="370" width="65" height="28" fill="#fb923c" rx="5" opacity="0.9"/>
+          <text x="52" y="388" text-anchor="middle" font-family="Space Mono,monospace" font-size="9" font-weight="700" fill="white">A1-2</text>
+        </g>
+        <g class="map-zone" id="zone-A3" onclick="filterByZone('A3')">
+          <rect x="14" y="295" width="65" height="28" fill="#fb923c" rx="5" opacity="0.9"/>
+          <text x="46" y="313" text-anchor="middle" font-family="Space Mono,monospace" font-size="9" font-weight="700" fill="white">A3-4</text>
+        </g>
+        <g class="map-zone" id="zone-A5" onclick="filterByZone('A5')">
+          <rect x="14" y="220" width="65" height="28" fill="#fb923c" rx="5" opacity="0.9"/>
+          <text x="46" y="238" text-anchor="middle" font-family="Space Mono,monospace" font-size="9" font-weight="700" fill="white">A5-6</text>
+        </g>
+        <g class="map-zone" id="zone-A7" onclick="filterByZone('A7')">
+          <rect x="38" y="130" width="65" height="28" fill="#fb923c" rx="5" opacity="0.9"/>
+          <text x="70" y="148" text-anchor="middle" font-family="Space Mono,monospace" font-size="9" font-weight="700" fill="white">A7-8</text>
+        </g>
+        <g class="map-zone" id="zone-A9" onclick="filterByZone('A9')">
+          <rect x="110" y="90" width="48" height="28" fill="#fb923c" rx="5" opacity="0.9"/>
+          <text x="134" y="108" text-anchor="middle" font-family="Space Mono,monospace" font-size="9" font-weight="700" fill="white">A9</text>
+        </g>
+
+        <!-- Wall line -->
+        <rect x="158" y="70" width="6" height="330" fill="#c9a96e" rx="2"/>
+
+        <!-- Entrance -->
+        <path d="M164 395 A 40 40 0 0 0 164 455" stroke="#2563eb" stroke-width="2" fill="none" stroke-dasharray="4,3"/>
+        <text x="168" y="448" font-family="DM Sans,sans-serif" font-size="9" fill="#2563eb">Entrada</text>
+
+        <!-- ===== ZONE E ===== -->
+        <g class="map-zone" id="zone-E" onclick="filterByZone('E')">
+          <rect x="270" y="170" width="120" height="220" fill="#93c5fd" rx="8" opacity="0.55"/>
+          <line x1="330" y1="170" x2="330" y2="390" stroke="#3b82f6" stroke-width="1.5"/>
+          <!-- E labels -->
+          <rect x="283" y="270" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="302" y="294" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">E1</text>
+          <rect x="283" y="220" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="302" y="244" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">E2</text>
+          <rect x="343" y="270" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="362" y="294" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">E3</text>
+          <rect x="343" y="220" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="362" y="244" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">E4</text>
+        </g>
+
+        <!-- ===== ZONE L ===== -->
+        <g class="map-zone" id="zone-L" onclick="filterByZone('L')">
+          <rect x="420" y="170" width="120" height="220" fill="#93c5fd" rx="8" opacity="0.55"/>
+          <line x1="480" y1="170" x2="480" y2="390" stroke="#3b82f6" stroke-width="1.5"/>
+          <rect x="433" y="270" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="452" y="294" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">L1</text>
+          <rect x="433" y="220" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="452" y="244" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">L2</text>
+          <rect x="493" y="270" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="512" y="294" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">L3</text>
+          <rect x="493" y="220" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="512" y="244" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">L4</text>
+        </g>
+
+        <!-- ===== ZONE K ===== -->
+        <g class="map-zone" id="zone-K" onclick="filterByZone('K')">
+          <rect x="570" y="170" width="120" height="220" fill="#93c5fd" rx="8" opacity="0.55"/>
+          <line x1="630" y1="170" x2="630" y2="390" stroke="#3b82f6" stroke-width="1.5"/>
+          <rect x="583" y="270" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="602" y="294" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">K1</text>
+          <rect x="583" y="220" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="602" y="244" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">K2</text>
+          <rect x="643" y="270" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="662" y="294" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">K3</text>
+          <rect x="643" y="220" width="38" height="38" fill="#93c5fd" rx="5" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="662" y="244" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#1e3a5f">K4</text>
+        </g>
+
+        <!-- ===== INV (right) ===== -->
+        <g class="map-zone" id="zone-INV" onclick="filterByZone('INV')">
+          <rect x="700" y="90" width="50" height="100" fill="#e5e7eb" rx="6" stroke="#9ca3af" stroke-width="1.5"/>
+          <text x="725" y="145" text-anchor="middle" font-family="Space Mono,monospace" font-size="9" font-weight="700" fill="#374151">INV</text>
+        </g>
+
+        <!-- ===== CAP (right) ===== -->
+        <g class="map-zone" id="zone-CAP" onclick="filterByZone('CAP')">
+          <rect x="700" y="220" width="50" height="140" fill="#d8b4fe" rx="6" stroke="#9333ea" stroke-width="1.5"/>
+          <text x="725" y="295" text-anchor="middle" font-family="Space Mono,monospace" font-size="9" font-weight="700" fill="#4c1d95">CAP</text>
+        </g>
+
+        <!-- ===== CONG + REFRI bottom ===== -->
+        <g class="map-zone" id="zone-CONG" onclick="filterByZone('CONG')">
+          <rect x="540" y="405" width="105" height="40" fill="#f9a8d4" rx="6" stroke="#db2777" stroke-width="1.5"/>
+          <text x="592" y="429" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#831843">CONG</text>
+        </g>
+        <g class="map-zone" id="zone-REFRI" onclick="filterByZone('REFRI')">
+          <rect x="655" y="405" width="95" height="40" fill="#f9a8d4" rx="6" stroke="#db2777" stroke-width="1.5"/>
+          <text x="702" y="429" text-anchor="middle" font-family="Space Mono,monospace" font-size="10" font-weight="700" fill="#831843">REFRI</text>
+        </g>
+
+      </svg>
+    </div>
+
+    <!-- Legend -->
+    <div class="zone-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>Zona F</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div>Zona A (AE/AG)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>E / L / K</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f9a8d4"></div>CONG / REFRI</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d8b4fe"></div>CAP</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e5e7eb; border:1px solid #9ca3af"></div>INV</div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// =============================================
+//  INVENTARIO — EDITA ESTA SECCIÓN
+//  Columnas: Ubicacion, Descripcion, Cantidad, Tipo
+// =============================================
+const INVENTARIO = [
+  // ZONA F (Refrigeración)
+  { ubicacion: "F1",  descripcion: "Agar nutritivo",           cantidad: 10,  tipo: "Reactivo" },
+  { ubicacion: "F2",  descripcion: "Tryptic Soy Broth (TSB)",  cantidad: 5,   tipo: "Reactivo" },
+  { ubicacion: "F3",  descripcion: "Buffer fosfato pH 7.4",    cantidad: 8,   tipo: "Reactivo" },
+  { ubicacion: "F4",  descripcion: "Enzima Taq Polimerasa",    cantidad: 3,   tipo: "Reactivo" },
+  { ubicacion: "F5",  descripcion: "Anticuerpo anti-IgG",      cantidad: 2,   tipo: "Reactivo" },
+  { ubicacion: "F6",  descripcion: "Solución de colágeno",     cantidad: 4,   tipo: "Reactivo" },
+  { ubicacion: "F7",  descripcion: "dNTPs mix",                cantidad: 6,   tipo: "Reactivo" },
+  { ubicacion: "F8",  descripcion: "EDTA 0.5 M",               cantidad: 5,   tipo: "Reactivo" },
+  { ubicacion: "F9",  descripcion: "Suero fetal bovino (FBS)", cantidad: 7,   tipo: "Reactivo" },
+  { ubicacion: "F10", descripcion: "Tripsina 0.25%",           cantidad: 4,   tipo: "Reactivo" },
+  { ubicacion: "F11", descripcion: "Glucosa solución 50%",     cantidad: 3,   tipo: "Reactivo" },
+  { ubicacion: "F12", descripcion: "Albúmina sérica bovina",   cantidad: 5,   tipo: "Reactivo" },
+  { ubicacion: "F13", descripcion: "Lisozima",                  cantidad: 2,   tipo: "Enzima" },
+  { ubicacion: "F14", descripcion: "DNasa I",                   cantidad: 2,   tipo: "Enzima" },
+  { ubicacion: "F15", descripcion: "RNasa A",                   cantidad: 2,   tipo: "Enzima" },
+  { ubicacion: "F16", descripcion: "Proteinasa K",              cantidad: 3,   tipo: "Enzima" },
+  { ubicacion: "F17", descripcion: "Muestra control (+)",       cantidad: 1,   tipo: "Control" },
+  { ubicacion: "F18", descripcion: "Muestra control (−)",       cantidad: 1,   tipo: "Control" },
+
+  // ZONA A (AE / AG — estanterías)
+  { ubicacion: "A1-2",  descripcion: "Vasos de precipitados 50 mL",   cantidad: 20, tipo: "Cristalería" },
+  { ubicacion: "A1-2",  descripcion: "Vasos de precipitados 100 mL",  cantidad: 18, tipo: "Cristalería" },
+  { ubicacion: "A3-4",  descripcion: "Erlenmeyer 250 mL",             cantidad: 15, tipo: "Cristalería" },
+  { ubicacion: "A3-4",  descripcion: "Erlenmeyer 500 mL",             cantidad: 10, tipo: "Cristalería" },
+  { ubicacion: "A5-6",  descripcion: "Matraces aforados 100 mL",      cantidad: 12, tipo: "Cristalería" },
+  { ubicacion: "A5-6",  descripcion: "Pipetas graduadas 10 mL",       cantidad: 20, tipo: "Cristalería" },
+  { ubicacion: "A7-8",  descripcion: "Tubos de ensayo 15 mL",         cantidad: 50, tipo: "Cristalería" },
+  { ubicacion: "A7-8",  descripcion: "Tubos falcon 50 mL",            cantidad: 30, tipo: "Plástico" },
+  { ubicacion: "A9",    descripcion: "Micropipeta P1000",              cantidad: 4,  tipo: "Equipo" },
+  { ubicacion: "A9",    descripcion: "Micropipeta P200",               cantidad: 4,  tipo: "Equipo" },
+  { ubicacion: "A9",    descripcion: "Micropipeta P20",                cantidad: 4,  tipo: "Equipo" },
+
+  // ZONA E (gabinetes centrales izquierda)
+  { ubicacion: "E1", descripcion: "Ácido clorhídrico HCl 37%",    cantidad: 3,  tipo: "Reactivo" },
+  { ubicacion: "E1", descripcion: "Ácido sulfúrico H₂SO₄",        cantidad: 2,  tipo: "Reactivo" },
+  { ubicacion: "E2", descripcion: "Hidróxido de sodio NaOH",      cantidad: 5,  tipo: "Reactivo" },
+  { ubicacion: "E2", descripcion: "Carbonato de sodio Na₂CO₃",    cantidad: 4,  tipo: "Reactivo" },
+  { ubicacion: "E3", descripcion: "Metanol HPLC grade",           cantidad: 6,  tipo: "Solvente" },
+  { ubicacion: "E3", descripcion: "Etanol absoluto 99.5%",        cantidad: 8,  tipo: "Solvente" },
+  { ubicacion: "E4", descripcion: "Acetonitrilo HPLC",            cantidad: 4,  tipo: "Solvente" },
+  { ubicacion: "E4", descripcion: "Cloroformo",                   cantidad: 3,  tipo: "Solvente" },
+
+  // ZONA L (gabinetes centrales medio)
+  { ubicacion: "L1", descripcion: "Buretas 50 mL",                cantidad: 8,  tipo: "Cristalería" },
+  { ubicacion: "L1", descripcion: "Pipetas Pasteur",              cantidad: 40, tipo: "Cristalería" },
+  { ubicacion: "L2", descripcion: "Embudos de separación 250 mL", cantidad: 6,  tipo: "Cristalería" },
+  { ubicacion: "L2", descripcion: "Probetas 100 mL",              cantidad: 10, tipo: "Cristalería" },
+  { ubicacion: "L3", descripcion: "Placas de Petri 90 mm",        cantidad: 50, tipo: "Plástico" },
+  { ubicacion: "L3", descripcion: "Puntillas para P1000 (caja)",  cantidad: 5,  tipo: "Consumible" },
+  { ubicacion: "L4", descripcion: "Puntillas para P200 (caja)",   cantidad: 5,  tipo: "Consumible" },
+  { ubicacion: "L4", descripcion: "Microtubos 1.5 mL (bolsa)",    cantidad: 3,  tipo: "Consumible" },
+
+  // ZONA K (gabinetes centrales derecha)
+  { ubicacion: "K1", descripcion: "Tinción Gram set completo",    cantidad: 2,  tipo: "Reactivo" },
+  { ubicacion: "K1", descripcion: "Lugol (yoduro de potasio)",    cantidad: 3,  tipo: "Reactivo" },
+  { ubicacion: "K2", descripcion: "Azul de metileno",             cantidad: 3,  tipo: "Reactivo" },
+  { ubicacion: "K2", descripcion: "Cristal violeta solución",     cantidad: 2,  tipo: "Reactivo" },
+  { ubicacion: "K3", descripcion: "Portaobjetos (caja 50 u)",     cantidad: 4,  tipo: "Cristalería" },
+  { ubicacion: "K3", descripcion: "Cubreobjetos 20×20 mm",        cantidad: 4,  tipo: "Cristalería" },
+  { ubicacion: "K4", descripcion: "Aceite de inmersión",          cantidad: 3,  tipo: "Reactivo" },
+  { ubicacion: "K4", descripcion: "Alcohol cetónico (decolorante)",cantidad: 2, tipo: "Reactivo" },
+
+  // CONG / REFRI
+  { ubicacion: "CONG", descripcion: "Muestras biológicas −20°C",  cantidad: 15, tipo: "Muestra" },
+  { ubicacion: "CONG", descripcion: "Estándares congelados",       cantidad: 6,  tipo: "Control" },
+  { ubicacion: "REFRI", descripcion: "Medios de cultivo preparados", cantidad: 8, tipo: "Reactivo" },
+  { ubicacion: "REFRI", descripcion: "Reactivos sensibles 4°C",    cantidad: 5,  tipo: "Reactivo" },
+
+  // CAP
+  { ubicacion: "CAP", descripcion: "Manual de bioseguridad",       cantidad: 2,  tipo: "Documento" },
+  { ubicacion: "CAP", descripcion: "EPP — guantes talla M",        cantidad: 20, tipo: "Seguridad" },
+  { ubicacion: "CAP", descripcion: "Gafas de seguridad",           cantidad: 8,  tipo: "Seguridad" },
+
+  // INV
+  { ubicacion: "INV", descripcion: "Stock Erlenmeyer 1000 mL",     cantidad: 6,  tipo: "Cristalería" },
+  { ubicacion: "INV", descripcion: "Stock tubos centrífuga",       cantidad: 60, tipo: "Plástico" },
+  { ubicacion: "INV", descripcion: "Stock micropipeta repuestos",  cantidad: 4,  tipo: "Equipo" },
+];
+
+// =============================================
+//  LÓGICA DE LA APP
+// =============================================
+const ZONE_COLORS = {
+  F:     { bg: "#dcfce7", color: "#166534", border: "#4ade80" },
+  A:     { bg: "#ffedd5", color: "#7c2d12", border: "#fb923c" },
+  E:     { bg: "#dbeafe", color: "#1e3a8a", border: "#3b82f6" },
+  L:     { bg: "#dbeafe", color: "#1e3a8a", border: "#3b82f6" },
+  K:     { bg: "#dbeafe", color: "#1e3a8a", border: "#3b82f6" },
+  CONG:  { bg: "#fce7f3", color: "#831843", border: "#db2777" },
+  REFRI: { bg: "#fce7f3", color: "#831843", border: "#db2777" },
+  CAP:   { bg: "#f3e8ff", color: "#4c1d95", border: "#9333ea" },
+  INV:   { bg: "#f3f4f6", color: "#374151", border: "#9ca3af" },
+};
+
+function getZoneColor(ubicacion) {
+  const u = ubicacion.toUpperCase();
+  if (u.startsWith('F')) return ZONE_COLORS.F;
+  if (u.startsWith('A')) return ZONE_COLORS.A;
+  if (u.startsWith('E')) return ZONE_COLORS.E;
+  if (u.startsWith('L')) return ZONE_COLORS.L;
+  if (u.startsWith('K')) return ZONE_COLORS.K;
+  if (u === 'CONG') return ZONE_COLORS.CONG;
+  if (u === 'REFRI') return ZONE_COLORS.REFRI;
+  if (u === 'CAP') return ZONE_COLORS.CAP;
+  if (u === 'INV') return ZONE_COLORS.INV;
+  return { bg: "#f3f4f6", color: "#374151", border: "#9ca3af" };
+}
+
+// Build type filters
+const types = [...new Set(INVENTARIO.map(i => i.tipo))].sort();
+const filterBar = document.getElementById('filter-bar');
+types.forEach(t => {
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  btn.dataset.filter = t;
+  btn.textContent = t;
+  btn.onclick = () => setFilter(t, btn);
+  filterBar.appendChild(btn);
+});
+
+let activeFilter = 'all';
+let activeItem = null;
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderResults(document.getElementById('search-input').value.trim());
+}
+
+document.getElementById('filter-bar').querySelector('[data-filter="all"]').onclick = function() {
+  setFilter('all', this);
+};
+
+function highlightText(text, query) {
+  if (!query) return text;
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return text.replace(re, '<mark class="highlight-text">$1</mark>');
+}
+
+function renderResults(query) {
+  const list = document.getElementById('results-list');
+  let filtered = INVENTARIO;
+
+  if (activeFilter !== 'all') {
+    filtered = filtered.filter(i => i.tipo === activeFilter);
+  }
+
+  if (query.length > 0) {
+    const q = query.toLowerCase();
+    filtered = filtered.filter(i =>
+      i.descripcion.toLowerCase().includes(q) ||
+      i.ubicacion.toLowerCase().includes(q) ||
+      i.tipo.toLowerCase().includes(q)
+    );
+  }
+
+  document.getElementById('count-badge').textContent = `${filtered.length} item${filtered.length !== 1 ? 's' : ''}`;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <p>Sin resultados para "<strong>${query}</strong>"</p>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = '';
+  filtered.forEach((item, idx) => {
+    const zc = getZoneColor(item.ubicacion);
+    const card = document.createElement('div');
+    card.className = 'result-card' + (activeItem && activeItem.descripcion === item.descripcion && activeItem.ubicacion === item.ubicacion ? ' active' : '');
+    card.innerHTML = `
+      <div class="zone-dot" style="background:${zc.bg}; color:${zc.color}; border:1.5px solid ${zc.border}">
+        ${item.ubicacion.length <= 3 ? item.ubicacion : item.ubicacion.substring(0,3)}
+      </div>
+      <div class="card-info">
+        <div class="card-name">${highlightText(item.descripcion, query)}</div>
+        <div class="card-meta">
+          <span>📍 ${highlightText(item.ubicacion, query)}</span>
+          <span>🏷️ ${item.tipo}</span>
+        </div>
+      </div>
+      <div class="card-qty">${item.cantidad}<br><span style="font-size:0.6rem;color:var(--muted)">uds</span></div>
+    `;
+    card.onclick = () => showDetail(item, card);
+    list.appendChild(card);
+  });
+}
+
+function showDetail(item, cardEl) {
+  // Deactivate previous
+  document.querySelectorAll('.result-card').forEach(c => c.classList.remove('active'));
+  cardEl.classList.add('active');
+  activeItem = item;
+
+  // Highlight map zone
+  highlightMapZone(item.ubicacion);
+
+  // Show detail panel
+  const panel = document.getElementById('detail-panel');
+  panel.classList.add('visible');
+  document.getElementById('detail-location').textContent = `📍 ${item.ubicacion}`;
+  document.getElementById('detail-name').textContent = item.descripcion;
+  document.getElementById('detail-type').textContent = item.tipo;
+  document.getElementById('detail-qty').textContent = item.cantidad;
+  document.getElementById('detail-zone').textContent = item.ubicacion;
+
+  const zc = getZoneColor(item.ubicacion);
+  document.getElementById('detail-location').style.background = zc.border;
+}
+
+function highlightMapZone(ubicacion) {
+  // Remove all highlights
+  document.querySelectorAll('.map-zone').forEach(z => z.classList.remove('highlighted'));
+
+  const u = ubicacion.toUpperCase();
+  let zoneId = null;
+
+  if (u.startsWith('F')) zoneId = 'zone-F';
+  else if (u === 'A1-2' || u === 'A1' || u === 'A2') zoneId = 'zone-A1';
+  else if (u === 'A3-4' || u === 'A3' || u === 'A4') zoneId = 'zone-A3';
+  else if (u === 'A5-6' || u === 'A5' || u === 'A6') zoneId = 'zone-A5';
+  else if (u === 'A7-8' || u === 'A7' || u === 'A8') zoneId = 'zone-A7';
+  else if (u === 'A9') zoneId = 'zone-A9';
+  else if (u.startsWith('E')) zoneId = 'zone-E';
+  else if (u.startsWith('L')) zoneId = 'zone-L';
+  else if (u.startsWith('K')) zoneId = 'zone-K';
+  else if (u === 'CONG') zoneId = 'zone-CONG';
+  else if (u === 'REFRI') zoneId = 'zone-REFRI';
+  else if (u === 'CAP') zoneId = 'zone-CAP';
+  else if (u === 'INV') zoneId = 'zone-INV';
+
+  if (zoneId) {
+    const el = document.getElementById(zoneId);
+    if (el) {
+      el.classList.add('highlighted');
+      el.scrollIntoViewIfNeeded?.();
+    }
+  }
+}
+
+function filterByZone(prefix) {
+  const input = document.getElementById('search-input');
+  input.value = prefix;
+  renderResults(prefix);
+}
+
+// Search input handler
+const searchInput = document.getElementById('search-input');
+searchInput.addEventListener('input', e => {
+  renderResults(e.target.value.trim());
+});
+
+// Initial render
+renderResults('');
+</script>
+</body>
+</html>
